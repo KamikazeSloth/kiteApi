@@ -3,9 +3,10 @@ var router = express.Router();
 var cors = require('cors')
 const mysql = require('mysql');
 var busFunc = require('../businessLayer/functions');
+const { corsUrl } = require('../utils/utils');
 
 var corsOptions = {
-  origin: 'http://localhost:8080',
+  origin: corsUrl,
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
 
