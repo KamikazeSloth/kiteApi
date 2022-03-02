@@ -1,9 +1,11 @@
 var express = require('express');
 var router = express.Router();
 var cors = require('cors')
-const mysql = require('mysql');
 var busFunc = require('../businessLayer/functions');
 const { corsUrl } = require('../utils/utils');
+const pgp = require('pg-promise')(/* options */)
+const aws = require('aws-sdk')
+
 
 var corsOptions = {
   origin: corsUrl,
@@ -13,28 +15,36 @@ var corsOptions = {
 /* GET all kites listing. */
 router.get('/kites', cors(corsOptions), function(req, res, next) {
 
-  const connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'asdf',
-    database: 'kiteshop'
-  })
+  let s3 = new aws.S3({
+    S3_DBPWD: process.env.S3_DBPWD,
+    S3_DBUSER: process.env.S3_DBUSER,
+    S3_DBNAME: process.env.S3_DBNAME,
 
-  connection.connect()
+    S3_DBHOST: process.env.S3_DBHOST,
+    S3_DBPORT: process.env.S3_DBPORT,
+    S3_DBDATABASE: process.env.S3_DBDATABASE
+  });
+
+console.log("asd", s3)
+
+  const db = pgp(`postgres://${s3.S3_DBUSER}:${s3.S3_DBPWD}@${s3.S3_DBHOST}:${s3.S3_DBPORT}/${s3.S3_DBDATABASE}`)
   
-  connection.query('select * from kites limit 0, 5', (err, rows, fields) => {
-    if (err) throw err
+  db.any('select * from kites')
+    .then((data) => {
+      console.log('DATA:', data)
 
-    let kites
-    //asd
+  
+        let kites
+
+        busFunc.removeDuplicates(data)
+        kites = busFunc.mapToBusObj(data)
     
-    busFunc.removeDuplicates(rows)
-    kites = busFunc.mapToBusObj(rows)
-
-    res.json(kites)
-  })
+        res.json(kites)
+      })
+      .catch((error) => {
+        console.log('ERROR:', error)
+      })
+    })
   
-  connection.end()
-});
 
 module.exports = router;
